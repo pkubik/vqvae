@@ -27,7 +27,7 @@ parser.add_argument("--dataset",  type=str, default='CIFAR10')
 
 # whether or not to save model
 parser.add_argument("-save", action="store_true")
-parser.add_argument("--filename",  type=str, default=timestamp)
+parser.add_argument("--filename",  type=str, default='model')
 
 args = parser.parse_args()
 

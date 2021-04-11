@@ -76,7 +76,7 @@ def load_data_and_data_loaders(dataset, batch_size):
         training_data, validation_data = load_cifar()
         training_loader, validation_loader = data_loaders(
             training_data, validation_data, batch_size)
-        x_train_var = np.var(training_data.train_data / 255.0)
+        x_train_var = np.var(training_data.data / 255.0)
 
     elif dataset == 'BLOCK':
         training_data, validation_data = load_block()
@@ -103,7 +103,7 @@ def readable_timestamp():
         ' ', '_').replace(':', '_').lower()
 
 
-def save_model_and_results(model, results, hyperparameters, timestamp):
+def save_model_and_results(model, results, hyperparameters, name_suffix):
     SAVE_MODEL_PATH = os.getcwd() + '/results'
 
     results_to_save = {
@@ -112,4 +112,4 @@ def save_model_and_results(model, results, hyperparameters, timestamp):
         'hyperparameters': hyperparameters
     }
     torch.save(results_to_save,
-               SAVE_MODEL_PATH + '/vqvae_data_' + timestamp + '.pth')
+               SAVE_MODEL_PATH + '/vqvae_' + name_suffix + '.pth')
