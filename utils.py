@@ -1,3 +1,6 @@
+from pathlib import Path
+from typing import Union
+
 import torch
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
@@ -6,6 +9,8 @@ import time
 import os
 from datasets.block import BlockDataset, LatentBlockDataset
 import numpy as np
+
+from models.vqvae import VQVAE
 
 
 def load_cifar():
@@ -113,3 +118,24 @@ def save_model_and_results(model, results, hyperparameters, name_suffix):
     }
     torch.save(results_to_save,
                SAVE_MODEL_PATH + '/vqvae_' + name_suffix + '.pth')
+
+
+def load_vqvae(model_path: Union[str, Path], device: torch.device = None):
+    model_path = Path(model_path)
+    if device is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    if torch.cuda.is_available():
+        data = torch.load(model_path)
+    else:
+        data = torch.load(model_path, map_location=lambda storage, loc: storage)
+
+    params = data["hyperparameters"]
+
+    model = VQVAE(params['n_hiddens'], params['n_residual_hiddens'],
+                  params['n_residual_layers'], params['n_embeddings'],
+                  params['embedding_dim'], params['beta']).to(device)
+
+    model.load_state_dict(data['model'])
+
+    return model, data

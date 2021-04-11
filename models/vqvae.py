@@ -26,6 +26,13 @@ class VQVAE(nn.Module):
         else:
             self.img_to_embedding_map = None
 
+    def encode(self, x):
+        z_e = self.encoder(x)
+        z_e = self.pre_quantization_conv(z_e)
+        _, _, _, _, encoding = self.vector_quantization(z_e)
+        b, c, zh, zw = z_e.shape
+        return encoding.view(b, zh, zw)
+
     def forward(self, x, verbose=False):
 
         z_e = self.encoder(x)

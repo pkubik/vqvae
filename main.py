@@ -66,8 +66,7 @@ results = {
 
 def train():
 
-    for i in range(args.n_updates):
-        (x, _) = next(iter(training_loader))
+    for i, (x, _) in zip(range(args.n_updates), training_loader):
         x = x.to(device)
         optimizer.zero_grad()
 
