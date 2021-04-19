@@ -6,7 +6,7 @@ from torchvision import datasets, transforms
 import numpy as np
 from torchvision.utils import save_image
 import time
-import os 
+import os
 import sys
 """
 add vqvae and pixelcnn dirs to path
@@ -15,13 +15,13 @@ make sure you run from vqvae directory
 current_dir = sys.path.append(os.getcwd())
 pixelcnn_dir = sys.path.append(os.getcwd()+ '/pixelcnn')
 
-from pixelcnn.models import GatedPixelCNN
+from pixelcnn.net import GatedPixelCNN
 import utils
 
 """
 Hyperparameters
 """
-import argparse 
+import argparse
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--batch_size", type=int, default=32)
@@ -55,7 +55,7 @@ else:
         eval('datasets.'+args.dataset)(
             '../data/{}/'.format(args.dataset), train=True, download=True,
             transform=transforms.ToTensor(),
-        ), batch_size=args.batch_Size, shuffle=False,
+        ), batch_size=args.batch_size, shuffle=False,
         num_workers=args.num_workers, pin_memory=True
     )
     test_loader = torch.utils.data.DataLoader(
@@ -79,14 +79,13 @@ def train():
     train_loss = []
     for batch_idx, (x, label) in enumerate(train_loader):
         start_time = time.time()
-        
+
         if args.dataset == 'LATENT_BLOCK':
             x = (x[:, 0]).cuda()
         else:
-            x = (x[:, 0] * (K-1)).long().cuda()
+            x = (x[:, 0] * (args.n_embeddings-1)).long().cuda()
         label = label.cuda()
-       
-    
+
         # Train PixelCNN with images
         logits = model(x, label)
         logits = logits.permute(0, 2, 3, 1).contiguous()
@@ -123,14 +122,14 @@ def test():
             label = label.cuda()
 
             logits = model(x, label)
-            
-            
+
+
             logits = logits.permute(0, 2, 3, 1).contiguous()
             loss = criterion(
                 logits.view(-1, args.n_embeddings),
                 x.view(-1)
             )
-            
+
             val_loss.append(loss.item())
 
     print('Validation Completed!\tLoss: {} Time: {}'.format(
@@ -145,7 +144,7 @@ def generate_samples(epoch):
     label = label.long().cuda()
 
     x_tilde = model.generate(label, shape=(args.img_dim,args.img_dim), batch_size=100)
-    
+
     print(x_tilde[0])
 
 
