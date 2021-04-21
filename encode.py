@@ -22,7 +22,7 @@ def encode(model_path: Union[str, Path], output_path: Union[str, Path]):
         encodings = vqvae.encode(x)
         encodings_batches.append(encodings)
 
-    all_encoding = torch.cat(encodings_batches, 0).cpu().numpy()
+    all_encoding = torch.unsqueeze(torch.cat(encodings_batches, 0), 1).cpu().numpy()
     np.save(output_path, all_encoding)
 
 
