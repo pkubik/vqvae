@@ -14,11 +14,11 @@ logging.basicConfig(format='%(asctime)s :: %(levelname)s :: %(message)s', level=
 @dataclass
 class TrainConfig:
     max_epoch: int = 100
-    batch_size: int = 32
+    batch_size: int = 128
     learning_rate: float = 3e-4
     log_interval: int = 10
     dataset: str = 'mnist'
-    device: str = "cpu"#"cuda" if torch.cuda.is_available() else "cpu"
+    device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 @dataclass

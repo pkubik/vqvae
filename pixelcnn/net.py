@@ -24,7 +24,7 @@ class GatedActivation(nn.Module):
 
     def forward(self, x):
         x, y = x.chunk(2, dim=1)
-        return F.tanh(x) * F.sigmoid(y)
+        return torch.tanh(x) * torch.sigmoid(y)
 
 
 class GatedMaskedConv2d(nn.Module):
