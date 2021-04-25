@@ -40,7 +40,7 @@ class NetConfig:
     num_image_channels: int = 1
     image_size: int = 28
     num_base_channels = 64
-    num_levels: int = 512
+    num_levels: int = 128
     num_layers: int = 5
 
 
@@ -62,12 +62,12 @@ class Trainer:
         self.samples_path = Path('tmp/pixelcnn_samples')
         self.samples_path.mkdir(exist_ok=True, parents=True)
 
-    def save_samples(self, step: int):
+    def save_samples(self, name: str):
         image_size = (self.net_config.image_size, ) * 2
         samples = self.net.generate(torch.tensor([i for i in range(4)]).to(self.device), image_size, 4)
         grid = torchvision.utils.make_grid(samples.unsqueeze_(1), padding=0, nrow=2)
-        grid * 255 / (self.net_config.num_levels - 1)
-        cv2.imwrite(str(self.samples_path / f'i{step}.bmp'), grid.sum(0).detach().cpu().numpy())
+        grid = grid * 255 / (self.net_config.num_levels - 1)
+        cv2.imwrite(str(self.samples_path / f'{name}.bmp'), grid.sum(0).detach().cpu().numpy())
 
     def train_single_epoch(self):
         data_loader_kwargs = {'batch_size': self.train_config.batch_size}
@@ -102,7 +102,7 @@ class Trainer:
                 mean_loss = np.mean(losses)
                 logging.info(f'After {batch_idx + 1} steps, loss: {mean_loss}')
                 losses = []
-                self.save_samples(batch_idx + 1)
+                self.save_samples(f"i{batch_idx + 1}")
 
             if batch_idx % self.train_config.save_interval == 0:
                 pt_path = 'tmp/pixelcnn.pt'
@@ -113,6 +113,7 @@ class Trainer:
         for epoch in range(self.train_config.max_epoch + 1):
             logging.info(f"Starting epoch {epoch}")
             self.train_single_epoch()
+            self.save_samples(f"e{epoch + 1}")
 
 
 if __name__ == '__main__':
