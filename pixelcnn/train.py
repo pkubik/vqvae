@@ -1,7 +1,11 @@
 import logging
 from dataclasses import dataclass
+from pathlib import Path
+
+import cv2
 import numpy as np
 import torch
+import torchvision
 from torch import nn
 from torch.utils import data
 from torchvision import datasets, transforms
@@ -17,8 +21,18 @@ class TrainConfig:
     batch_size: int = 128
     learning_rate: float = 3e-4
     log_interval: int = 10
+    save_interval: int = 100
     dataset: str = 'mnist'
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
+
+    @staticmethod
+    def debug_config() -> 'TrainConfig':
+        return TrainConfig(
+            batch_size=3,
+            log_interval=1,
+            save_interval=2,
+            device="cpu"
+        )
 
 
 @dataclass
@@ -44,6 +58,16 @@ class Trainer:
         self.dataset = datasets.MNIST(
             'data', train=True, download=True,
             transform=transforms.ToTensor())
+
+        self.samples_path = Path('tmp/pixelcnn_samples')
+        self.samples_path.mkdir(exist_ok=True, parents=True)
+
+    def save_samples(self, step: int):
+        image_size = (self.net_config.image_size, ) * 2
+        samples = self.net.generate(torch.tensor([i for i in range(4)]).to(self.device), image_size, 4)
+        grid = torchvision.utils.make_grid(samples.unsqueeze_(1), padding=0, nrow=2)
+        grid * 255 / (self.net_config.num_levels - 1)
+        cv2.imwrite(str(self.samples_path / f'i{step}.bmp'), grid.sum(0).detach().cpu().numpy())
 
     def train_single_epoch(self):
         data_loader_kwargs = {'batch_size': self.train_config.batch_size}
@@ -78,6 +102,12 @@ class Trainer:
                 mean_loss = np.mean(losses)
                 logging.info(f'After {batch_idx + 1} steps, loss: {mean_loss}')
                 losses = []
+                self.save_samples(batch_idx + 1)
+
+            if batch_idx % self.train_config.save_interval == 0:
+                pt_path = 'tmp/pixelcnn.pt'
+                logging.info(f'Saving checkpoint at {pt_path}')
+                torch.save(self.net.state_dict(), pt_path)
 
     def train(self):
         for epoch in range(self.train_config.max_epoch + 1):
