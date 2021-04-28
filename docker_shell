@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+
+# First build the image with
+# docker build . -t vqvae
+
+# Local "tmp" directory will be used for some of the temporary files
+mkdir tmp 2>/dev/null
+touch tmp/docker_bash_history
+
+docker run -it --rm \
+    -v $PWD:/root/workdir \
+    -v /nas:/nas \
+    -e HISTFILE=/root/workdir/tmp/docker_bash_history \
+    --workdir /root/workdir \
+    --gpus all \
+    --net host \
+    --entrypoint bash \
+    vqvae "$@"
