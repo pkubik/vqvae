@@ -1,4 +1,5 @@
 import logging
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -60,6 +61,7 @@ class Trainer:
             transform=transforms.ToTensor())
 
         self.samples_path = Path('tmp/pixelcnn_samples')
+        shutil.rmtree(self.samples_path)
         self.samples_path.mkdir(exist_ok=True, parents=True)
 
     def save_samples(self, name: str):
@@ -102,12 +104,12 @@ class Trainer:
                 mean_loss = np.mean(losses)
                 logging.info(f'After {batch_idx + 1} steps, loss: {mean_loss}')
                 losses = []
-                self.save_samples(f"i{batch_idx + 1}")
 
             if batch_idx % self.train_config.save_interval == 0:
                 pt_path = 'tmp/pixelcnn.pt'
                 logging.info(f'Saving checkpoint at {pt_path}')
                 torch.save(self.net.state_dict(), pt_path)
+                self.save_samples(f"i{batch_idx + 1}")
 
     def train(self):
         for epoch in range(self.train_config.max_epoch + 1):
