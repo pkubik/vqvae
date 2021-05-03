@@ -85,12 +85,13 @@ class GatedMaskedConv2d(nn.Module):
 
 
 class GatedPixelCNN(nn.Module):
-    def __init__(self, input_dim=256, dim=64, n_layers=15, n_classes=10):
+    def __init__(self, num_levels=256, dim=64, n_layers=15, n_classes=10):
         super().__init__()
+        self.num_levels = num_levels
         self.dim = dim
 
         # Create embedding layer to embed input
-        self.embedding = nn.Embedding(input_dim, dim)
+        self.embedding = nn.Embedding(num_levels, dim)
 
         # Building the PixelCNN layer by layer
         self.layers = nn.ModuleList()
@@ -110,7 +111,7 @@ class GatedPixelCNN(nn.Module):
         self.output_conv = nn.Sequential(
             nn.Conv2d(dim, 512, 1),
             nn.ReLU(True),
-            nn.Conv2d(512, input_dim, 1)
+            nn.Conv2d(512, num_levels, 1)
         )
 
         self.apply(weights_init)
