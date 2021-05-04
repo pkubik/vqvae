@@ -41,7 +41,7 @@ class NetConfig:
     num_image_channels: int = 1
     image_size: int = 28
     num_base_channels = 64
-    num_levels: int = 128
+    num_levels: int = 2
     num_layers: int = 5
 
 
@@ -61,7 +61,8 @@ class Trainer:
             transform=transforms.ToTensor())
 
         self.samples_path = Path('tmp/pixelcnn_samples')
-        shutil.rmtree(self.samples_path)
+        if self.samples_path.exists():
+            shutil.rmtree(self.samples_path)
         self.samples_path.mkdir(exist_ok=True, parents=True)
 
     def save_samples(self, name: str):
