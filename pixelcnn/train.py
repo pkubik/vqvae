@@ -6,14 +6,14 @@ import numpy as np
 
 import argparse
 import os
-from utils import str2bool, save_samples, get_loaders
+from pixelcnn.utils import str2bool, save_samples, get_loaders
 
 from tqdm import tqdm
 
-from pixelcnn import PixelCNN
+from pixelcnn.net import PixelCNN
 
-TRAIN_DATASET_ROOT = '.data/train/'
-TEST_DATASET_ROOT = '.data/test/'
+TRAIN_DATASET_ROOT = 'data/train/'
+TEST_DATASET_ROOT = 'data/test/'
 
 MODEL_PARAMS_OUTPUT_DIR = 'model'
 MODEL_PARAMS_OUTPUT_FILENAME = 'params.pth'
@@ -36,7 +36,7 @@ def train(cfg, model, device, train_loader, optimizer, epoch):
         loss = F.cross_entropy(outputs, images)
         loss.backward()
 
-        # clip_grad_norm_(model.parameters(), max_norm=cfg.max_norm)
+        clip_grad_norm_(model.parameters(), max_norm=cfg.max_norm)
 
         optimizer.step()
 
