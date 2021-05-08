@@ -1,124 +1,143 @@
-import logging
-import shutil
-from dataclasses import dataclass
-from pathlib import Path
-
-import cv2
-import numpy as np
 import torch
-import torchvision
-from torch import nn
-from torch.utils import data
-from torchvision import datasets, transforms
+import torch.optim as optim
+import torch.nn.functional as F
+from torch.nn.utils import clip_grad_norm_
+import numpy as np
 
-from pixelcnn.net import GatedPixelCNN
+import argparse
+import os
+from pixelcnn.utils import str2bool, save_samples, get_loaders
 
-logging.basicConfig(format='%(asctime)s :: %(levelname)s :: %(message)s', level=logging.INFO)
+from tqdm import tqdm
 
+from pixelcnn.net import PixelCNN
 
-@dataclass
-class TrainConfig:
-    max_epoch: int = 100
-    batch_size: int = 128
-    learning_rate: float = 3e-4
-    log_interval: int = 10
-    save_interval: int = 100
-    dataset: str = 'mnist'
-    device: str = "cuda" if torch.cuda.is_available() else "cpu"
+TRAIN_DATASET_ROOT = 'data/train/'
+TEST_DATASET_ROOT = 'data/test/'
 
-    @staticmethod
-    def debug_config() -> 'TrainConfig':
-        return TrainConfig(
-            batch_size=3,
-            log_interval=1,
-            save_interval=2,
-            device="cpu"
-        )
+MODEL_PARAMS_OUTPUT_DIR = 'tmp/pixelcnn_model'
+MODEL_PARAMS_OUTPUT_FILENAME = 'params.pth'
+
+TRAIN_SAMPLES_DIR = 'tmp/pixelcnn_samples'
 
 
-@dataclass
-class NetConfig:
-    num_image_channels: int = 1
-    image_size: int = 28
-    num_base_channels = 64
-    num_levels: int = 2
-    num_layers: int = 5
+def train(cfg, model, device, train_loader, optimizer, epoch):
+    model.train()
+
+    for images, labels in tqdm(train_loader, desc='Epoch {}/{}'.format(epoch + 1, cfg.epochs)):
+        optimizer.zero_grad()
+
+        images = images.to(device, non_blocking=True)
+        labels = labels.to(device, non_blocking=True)
+
+        normalized_images = images.float() / (cfg.color_levels - 1)
+
+        outputs = model(normalized_images, labels)
+        loss = F.cross_entropy(outputs, images)
+        loss.backward()
+
+        clip_grad_norm_(model.parameters(), max_norm=cfg.max_norm)
+
+        optimizer.step()
 
 
-class Trainer:
-    def __init__(self, train_config: TrainConfig, net_config: NetConfig):
-        self.train_config = train_config
-        self.net_config = net_config
-        self.device = torch.device(train_config.device)
-        self.net = GatedPixelCNN(
-            net_config.num_levels,
-            net_config.num_base_channels,
-            net_config.num_layers).to(self.device)
+def test_and_sample(cfg, model, device, test_loader, height, width, losses, params, epoch):
+    test_loss = 0
 
-        self.optimizer = torch.optim.Adam(self.net.parameters(), lr=train_config.learning_rate)
-        self.dataset = datasets.MNIST(
-            'data', train=True, download=True,
-            transform=transforms.ToTensor())
+    model.eval()
+    with torch.no_grad():
+        for images, labels in test_loader:
+            images = images.to(device, non_blocking=True)
+            labels = labels.to(device, non_blocking=True)
 
-        self.samples_path = Path('tmp/pixelcnn_samples')
-        if self.samples_path.exists():
-            shutil.rmtree(self.samples_path)
-        self.samples_path.mkdir(exist_ok=True, parents=True)
+            normalized_images = images.float() / (cfg.color_levels - 1)
+            outputs = model(normalized_images, labels)
 
-    def save_samples(self, name: str):
-        image_size = (self.net_config.image_size, ) * 2
-        samples = self.net.generate(torch.tensor([i for i in range(4)]).to(self.device), image_size, 4)
-        grid = torchvision.utils.make_grid(samples.unsqueeze_(1), padding=0, nrow=2)
-        grid = grid * 255 / (self.net_config.num_levels - 1)
-        cv2.imwrite(str(self.samples_path / f'{name}.bmp'), grid.sum(0).detach().cpu().numpy())
+            test_loss += F.cross_entropy(outputs, images, reduction='none')
 
-    def train_single_epoch(self):
-        data_loader_kwargs = {'batch_size': self.train_config.batch_size}
-        if self.train_config.device == 'cuda':
-            data_loader_kwargs.update({
-                'num_workers': 2,
-                'pin_memory': True,
-                'shuffle': True
-            })
+    test_loss = test_loss.mean().cpu() / len(test_loader.dataset)
 
-        data_loader = data.DataLoader(self.dataset, **data_loader_kwargs)
+    print("Average test loss: {}".format(test_loss))
 
-        losses = []
-        for batch_idx, (x, y) in enumerate(data_loader):
-            x = (x[:, 0] / 255. * (self.net_config.num_levels - 1)).long().to(self.device)
-            y = y.to(self.device)
+    losses.append(test_loss)
+    params.append(model.state_dict())
 
-            logits = self.net(x, y)
+    samples = model.sample((1, height, width), cfg.epoch_samples, device=device)
+    save_samples(samples, TRAIN_SAMPLES_DIR, 'epoch{}_samples.png'.format(epoch + 1))
 
-            flattened_logits = logits.permute(0, 2, 3, 1).contiguous().view(-1, self.net_config.num_levels)
-            loss = nn.CrossEntropyLoss()(
-                flattened_logits,
-                x.view(-1)
-            )
 
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
+def main():
+    parser = argparse.ArgumentParser(description='PixelCNN')
 
-            losses.append(loss.detach().cpu().numpy())
-            if len(losses) >= self.train_config.log_interval:
-                mean_loss = np.mean(losses)
-                logging.info(f'After {batch_idx + 1} steps, loss: {mean_loss}')
-                losses = []
+    parser.add_argument('--epochs', type=int, default=25,
+                        help='Number of epochs to train model for')
+    parser.add_argument('--batch-size', type=int, default=32,
+                        help='Number of images per mini-batch')
+    parser.add_argument('--dataset', type=str, default='mnist',
+                        help='Dataset to train model on. Either mnist, fashionmnist or cifar.')
 
-            if batch_idx % self.train_config.save_interval == 0:
-                pt_path = 'tmp/pixelcnn.pt'
-                logging.info(f'Saving checkpoint at {pt_path}')
-                torch.save(self.net.state_dict(), pt_path)
-                self.save_samples(f"i{batch_idx + 1}")
+    parser.add_argument('--causal-ksize', type=int, default=7,
+                        help='Kernel size of causal convolution')
+    parser.add_argument('--hidden-ksize', type=int, default=7,
+                        help='Kernel size of hidden layers convolutions')
 
-    def train(self):
-        for epoch in range(self.train_config.max_epoch + 1):
-            logging.info(f"Starting epoch {epoch}")
-            self.train_single_epoch()
-            self.save_samples(f"e{epoch + 1}")
+    parser.add_argument('--color-levels', type=int, default=2,
+                        help='Number of levels to quantisize value of each channel of each pixel into')
+
+    parser.add_argument('--hidden-fmaps', type=int, default=30,
+                        help='Number of feature maps in hidden layer (must be divisible by 3)')
+    parser.add_argument('--out-hidden-fmaps', type=int, default=10,
+                        help='Number of feature maps in outer hidden layer')
+    parser.add_argument('--hidden-layers', type=int, default=4,
+                        help='Number of layers of gated convolutions with mask of type "B"')
+
+    parser.add_argument('--learning-rate', '--lr', type=float, default=0.0003,
+                        help='Learning rate of optimizer')
+    parser.add_argument('--weight-decay', type=float, default=0.0001,
+                        help='Weight decay rate of optimizer')
+    parser.add_argument('--max-norm', type=float, default=1.,
+                        help='Max norm of the gradients after clipping')
+
+    parser.add_argument('--epoch-samples', type=int, default=25,
+                        help='Number of images to sample each epoch')
+
+    parser.add_argument('--cuda', type=str2bool, default=True,
+                        help='Flag indicating whether CUDA should be used')
+
+    cfg = parser.parse_args()
+
+    torch.manual_seed(42)
+
+    EPOCHS = cfg.epochs
+
+    model = PixelCNN(cfg=cfg)
+
+    device = torch.device("cuda" if torch.cuda.is_available() and cfg.cuda else "cpu")
+    model.to(device)
+
+    train_loader, test_loader, HEIGHT, WIDTH = get_loaders(cfg.dataset, cfg.batch_size, cfg.color_levels, TRAIN_DATASET_ROOT, TEST_DATASET_ROOT)
+
+    optimizer = optim.Adam(model.parameters(), lr=cfg.learning_rate)
+
+    losses = []
+    params = []
+
+    if not os.path.exists(MODEL_PARAMS_OUTPUT_DIR):
+        os.mkdir(MODEL_PARAMS_OUTPUT_DIR)
+
+    for epoch in range(EPOCHS):
+        train(cfg, model, device, train_loader, optimizer, epoch)
+        test_and_sample(cfg, model, device, test_loader, HEIGHT, WIDTH, losses, params, epoch)
+        torch.save(model, os.path.join(MODEL_PARAMS_OUTPUT_DIR, f'pixelcnn_e{epoch}.pth'))
+
+    print('\nBest test loss: {}'.format(np.amin(np.array(losses))))
+    print('Best epoch: {}'.format(np.argmin(np.array(losses)) + 1))
+    best_params = params[np.argmin(np.array(losses))]
+
+    MODEL_PARAMS_OUTPUT_FILENAME = '{}_cks{}hks{}cl{}hfm{}ohfm{}hl{}_params.pth'\
+        .format(cfg.dataset, cfg.causal_ksize, cfg.hidden_ksize, cfg.color_levels, cfg.hidden_fmaps, cfg.out_hidden_fmaps, cfg.hidden_layers)
+    torch.save(best_params, os.path.join(MODEL_PARAMS_OUTPUT_DIR, MODEL_PARAMS_OUTPUT_FILENAME))
 
 
 if __name__ == '__main__':
-    trainer = Trainer(TrainConfig(), NetConfig())
-    trainer.train()
+    main()
