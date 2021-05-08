@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import argparse
 import os
@@ -27,8 +29,9 @@ def nearest_square(num):
 
 
 def save_samples(samples, dirname, filename):
-    if not os.path.exists(dirname):
-        os.mkdir(dirname)
+    dir_path = Path(dirname)
+    if not dir_path.exists():
+        dir_path.mkdir(exist_ok=True, parents=True)
 
     count = samples.size()[0]
 
@@ -38,7 +41,7 @@ def save_samples(samples, dirname, filename):
     else:
         nrow = count
 
-    save_image(samples, os.path.join(dirname, filename), nrow=nrow)
+    save_image(samples, dir_path / filename, nrow=nrow)
 
 
 def get_loaders(dataset_name, batch_size, color_levels, train_root, test_root):

@@ -15,10 +15,10 @@ from pixelcnn.net import PixelCNN
 TRAIN_DATASET_ROOT = 'data/train/'
 TEST_DATASET_ROOT = 'data/test/'
 
-MODEL_PARAMS_OUTPUT_DIR = 'model'
+MODEL_PARAMS_OUTPUT_DIR = 'tmp/pixelcnn_model'
 MODEL_PARAMS_OUTPUT_FILENAME = 'params.pth'
 
-TRAIN_SAMPLES_DIR = 'train_samples'
+TRAIN_SAMPLES_DIR = 'tmp/pixelcnn_samples'
 
 
 def train(cfg, model, device, train_loader, optimizer, epoch):
@@ -78,7 +78,7 @@ def main():
 
     parser.add_argument('--causal-ksize', type=int, default=7,
                         help='Kernel size of causal convolution')
-    parser.add_argument('--hidden-ksize', type=int, default=3,
+    parser.add_argument('--hidden-ksize', type=int, default=7,
                         help='Kernel size of hidden layers convolutions')
 
     parser.add_argument('--color-levels', type=int, default=2,
@@ -122,16 +122,18 @@ def main():
     losses = []
     params = []
 
+    if not os.path.exists(MODEL_PARAMS_OUTPUT_DIR):
+        os.mkdir(MODEL_PARAMS_OUTPUT_DIR)
+
     for epoch in range(EPOCHS):
         train(cfg, model, device, train_loader, optimizer, epoch)
         test_and_sample(cfg, model, device, test_loader, HEIGHT, WIDTH, losses, params, epoch)
+        torch.save(model, os.path.join(MODEL_PARAMS_OUTPUT_DIR, f'pixelcnn_e{epoch}.pth'))
 
     print('\nBest test loss: {}'.format(np.amin(np.array(losses))))
     print('Best epoch: {}'.format(np.argmin(np.array(losses)) + 1))
     best_params = params[np.argmin(np.array(losses))]
 
-    if not os.path.exists(MODEL_PARAMS_OUTPUT_DIR):
-        os.mkdir(MODEL_PARAMS_OUTPUT_DIR)
     MODEL_PARAMS_OUTPUT_FILENAME = '{}_cks{}hks{}cl{}hfm{}ohfm{}hl{}_params.pth'\
         .format(cfg.dataset, cfg.causal_ksize, cfg.hidden_ksize, cfg.color_levels, cfg.hidden_fmaps, cfg.out_hidden_fmaps, cfg.hidden_layers)
     torch.save(best_params, os.path.join(MODEL_PARAMS_OUTPUT_DIR, MODEL_PARAMS_OUTPUT_FILENAME))
