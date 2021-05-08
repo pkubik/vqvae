@@ -26,15 +26,13 @@ parser.add_argument("--log_interval", type=int, default=50)
 parser.add_argument("--dataset",  type=str, default='CIFAR10')
 
 # whether or not to save model
-parser.add_argument("-save", action="store_true")
 parser.add_argument("--filename",  type=str, default='model')
 
 args = parser.parse_args()
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-if args.save:
-    print('Results will be saved in ./results/vqvae_' + args.filename + '.pth')
+print('Results will be saved in ./results/vqvae_' + args.filename + '.pth')
 
 """
 Load data and define batch data loaders
@@ -64,37 +62,46 @@ results = {
 }
 
 
+def save_model(n_updates):
+    hyperparameters = args.__dict__
+    utils.save_model_and_results(
+        model, results, hyperparameters, args.filename)
+
+    print('Update #', n_updates, 'Recon Error:',
+          np.mean(results["recon_errors"][-args.log_interval:]),
+          'Loss', np.mean(results["loss_vals"][-args.log_interval:]),
+          'Perplexity:', np.mean(results["perplexities"][-args.log_interval:]))
+
+
 def train():
+    n_updates = 0
+    while True:
+        for x, _ in training_loader:
+            n_updates += 1
+            x = x.to(device)
+            optimizer.zero_grad()
 
-    for i, (x, _) in zip(range(args.n_updates), training_loader):
-        x = x.to(device)
-        optimizer.zero_grad()
+            embedding_loss, x_hat, perplexity = model(x)
+            recon_loss = torch.mean((x_hat - x)**2) / x_train_var
+            loss = recon_loss + embedding_loss
 
-        embedding_loss, x_hat, perplexity = model(x)
-        recon_loss = torch.mean((x_hat - x)**2) / x_train_var
-        loss = recon_loss + embedding_loss
+            loss.backward()
+            optimizer.step()
 
-        loss.backward()
-        optimizer.step()
+            results["recon_errors"].append(recon_loss.cpu().detach().numpy())
+            results["perplexities"].append(perplexity.cpu().detach().numpy())
+            results["loss_vals"].append(loss.cpu().detach().numpy())
+            results["n_updates"] = n_updates
 
-        results["recon_errors"].append(recon_loss.cpu().detach().numpy())
-        results["perplexities"].append(perplexity.cpu().detach().numpy())
-        results["loss_vals"].append(loss.cpu().detach().numpy())
-        results["n_updates"] = i
+            if n_updates % args.log_interval == 0:
+                """
+                save model and print values
+                """
+                save_model(n_updates)
 
-        if i % args.log_interval == 0:
-            """
-            save model and print values
-            """
-            if args.save:
-                hyperparameters = args.__dict__
-                utils.save_model_and_results(
-                    model, results, hyperparameters, args.filename)
-
-            print('Update #', i, 'Recon Error:',
-                  np.mean(results["recon_errors"][-args.log_interval:]),
-                  'Loss', np.mean(results["loss_vals"][-args.log_interval:]),
-                  'Perplexity:', np.mean(results["perplexities"][-args.log_interval:]))
+            if n_updates > args.n_updates:
+                save_model(n_updates)
+                return
 
 
 if __name__ == "__main__":
