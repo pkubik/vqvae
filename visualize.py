@@ -29,9 +29,18 @@ def reconstruct(model: VQVAE, images: list, device, plot_path: str = None):
         plt.show()
 
 
-# sampling uniform
+def uniform_sample(model: VQVAE, num_samples: int, device, plot_path: str = None):
+    code_shape = model.encode(torch.zeros((num_samples, 3, 32, 32), device=device)).shape
+    print('Latent code shape:', code_shape)
+    code = torch.randint(0, model.vector_quantization.embedding.num_embeddings, code_shape, device=device)
+    emb = model.vector_quantization.embedding(code).permute(0, 3, 1, 2)
+    hx = model.decoder(emb)
 
-# sampling from pixelcnn
+    display_image_grid(hx)
+    if plot_path:
+        plt.savefig(plot_path)
+    else:
+        plt.show()
 
 
 def main():
@@ -39,8 +48,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('model')
     parser.add_argument('-r', '--reconstruction', action='store_true')
+    parser.add_argument('-u', '--uniform-sample', action='store_true')
     parser.add_argument('-g', '--gpu', action='store_true', default=None)
     parser.add_argument('--no-gpu', action='store_false', default=None)
+    parser.add_argument('-n', '--num-samples', type=int, default=16)
     args = parser.parse_args()
 
     use_gpu = args.gpu
@@ -57,7 +68,10 @@ def main():
     if args.reconstruction:
         if data is None:
             _, data = load_cifar()
-        reconstruct(vqvae, [data[i][0] for i in range(16)], device)
+        reconstruct(vqvae, [data[i][0] for i in range(args.num_samples)], device)
+
+    if args.uniform_sample:
+        uniform_sample(vqvae, args.num_samples, device)
 
 
 if __name__ == '__main__':
