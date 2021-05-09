@@ -16,15 +16,17 @@ def display_image_grid(x):
     fig.axes.get_yaxis().set_visible(False)
 
 
-# reconstruction
-def reconstruct(model: VQVAE, images: list, device):
+def reconstruct(model: VQVAE, images: list, device, plot_path: str = None):
     x = torch.stack(images)
     x = x.to(device)
     _, hx, _ = model(x)
 
     concated_x = torch.cat((x, hx))
     display_image_grid(concated_x)
-    plt.show()
+    if plot_path:
+        plt.savefig(plot_path)
+    else:
+        plt.show()
 
 
 # sampling uniform

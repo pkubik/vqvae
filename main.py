@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -5,6 +7,7 @@ import torch.optim as optim
 import argparse
 import utils
 from models.vqvae import VQVAE
+from visualize import reconstruct
 
 parser = argparse.ArgumentParser()
 
@@ -14,7 +17,7 @@ Hyperparameters
 timestamp = utils.readable_timestamp()
 
 parser.add_argument("--batch_size", type=int, default=32)
-parser.add_argument("--n_updates", type=int, default=100000)
+parser.add_argument("--n_updates", type=int, default=1000000)
 parser.add_argument("--n_hiddens", type=int, default=128)
 parser.add_argument("--n_residual_hiddens", type=int, default=32)
 parser.add_argument("--n_residual_layers", type=int, default=4)
@@ -40,6 +43,9 @@ Load data and define batch data loaders
 
 training_data, validation_data, training_loader, validation_loader, x_train_var = utils.load_data_and_data_loaders(
     args.dataset, args.batch_size)
+samples = [validation_data[i][0] for i in range(16)]
+samples_plots_path = Path('tmp/vqvae_samples')
+samples_plots_path.mkdir(exist_ok=True, parents=True)
 """
 Set up VQ-VAE model with components defined in ./models/ folder
 """
@@ -98,6 +104,7 @@ def train():
                 save model and print values
                 """
                 save_model(n_updates)
+                reconstruct(model, samples, device, str(samples_plots_path / f'step{n_updates}'))
 
             if n_updates > args.n_updates:
                 save_model(n_updates)
