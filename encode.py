@@ -15,6 +15,7 @@ def encode_from_loader(vqvae, loader, output_path: Path, device):
         encodings = vqvae.encode(x)
         encodings_batches.append(encodings)
     all_encoding = torch.cat(encodings_batches, 0).cpu().numpy()
+    output_path.parent.mkdir(exist_ok=True, parents=True)
     np.save(output_path, all_encoding)
 
 
@@ -28,10 +29,10 @@ def encode(model_path: Union[str, Path], output_path: Union[str, Path]):
     _, _, training_loader, validation_loader, _ = load_data_and_data_loaders('CIFAR10', 128)
 
     print("Encoding CIFAR-10 validation...")
-    encode_from_loader(vqvae, validation_loader, output_path / 'encoded_cifar10_validation.npy', device)
+    encode_from_loader(vqvae, validation_loader, output_path / 'validation' / 'encoded_cifar10.npy', device)
 
     print("Encoding CIFAR-10 train...")
-    encode_from_loader(vqvae, training_loader, output_path / 'encoded_cifar10_train.npy', device)
+    encode_from_loader(vqvae, training_loader, output_path / 'train' / 'encoded_cifar10.npy', device)
 
 
 def main():
