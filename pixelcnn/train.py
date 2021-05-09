@@ -74,7 +74,7 @@ def main():
     parser.add_argument('--batch-size', type=int, default=32,
                         help='Number of images per mini-batch')
     parser.add_argument('--dataset', type=str, default='mnist',
-                        help='Dataset to train model on. Either mnist, fashionmnist or cifar.')
+                        help='Dataset to train model on. Either mnist, fashionmnist, cifar or code.')
 
     parser.add_argument('--causal-ksize', type=int, default=7,
                         help='Kernel size of causal convolution')
