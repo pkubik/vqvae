@@ -1,5 +1,19 @@
 # PixelCNN
 
+------------------------------------------------
+
+## VQVAE UPDATES!
+
+In order to train on VQVAE encodings, first generate them
+using `encode.py` script from the root of the repository
+and then run PixelCNN training with:
+
+```
+python -m pixelcnn.train --dataset code --color-levels 256
+```
+
+-------------------------------------------------
+
 This repository is a PyTorch implementation of [PixelCNN](https://arxiv.org/abs/1601.06759) in its [gated](https://arxiv.org/abs/1606.05328) form.
 The main goals I've pursued while doing it is to dive deeper into PyTorch and the network's architecture itself, which I've found both interesting and challenging to grasp. The repo might help someone, too!
 
