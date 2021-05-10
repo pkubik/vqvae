@@ -2,6 +2,7 @@ import numpy as np
 import torch
 from torchvision.utils import make_grid
 
+from pixelcnn.net import PixelCNN
 from utils import load_cifar
 from utils import load_vqvae
 from models.vqvae import VQVAE
@@ -33,7 +34,11 @@ def uniform_sample(model: VQVAE, num_samples: int, device, plot_path: str = None
     code_shape = model.encode(torch.zeros((num_samples, 3, 32, 32), device=device)).shape
     print('Latent code shape:', code_shape)
     code = torch.randint(0, model.vector_quantization.embedding.num_embeddings, code_shape, device=device)
-    emb = model.vector_quantization.embedding(code).permute(0, 3, 1, 2)
+    decode(model, code, plot_path)
+
+
+def decode(model: VQVAE, code, plot_path: str = None):
+    emb = model.vector_quantization.embedding(code.squeeze(1)).permute(0, 3, 1, 2)
     hx = model.decoder(emb)
 
     display_image_grid(hx)
@@ -49,6 +54,7 @@ def main():
     parser.add_argument('model')
     parser.add_argument('-r', '--reconstruction', action='store_true')
     parser.add_argument('-u', '--uniform-sample', action='store_true')
+    parser.add_argument('-p', '--pixelcnn', type=str, default=None)
     parser.add_argument('-g', '--gpu', action='store_true', default=None)
     parser.add_argument('--no-gpu', action='store_false', default=None)
     parser.add_argument('-n', '--num-samples', type=int, default=16)
@@ -72,6 +78,16 @@ def main():
 
     if args.uniform_sample:
         uniform_sample(vqvae, args.num_samples, device)
+
+    if args.pixelcnn:
+        ckpt = torch.load(args.pixelcnn)
+        pixelcnn_state = ckpt['model']
+        cfg = ckpt['config']
+        pixelcnn = PixelCNN(cfg).to(device)
+        pixelcnn.load_state_dict(pixelcnn_state)
+        code_shape = vqvae.encode(torch.zeros((1, 3, 32, 32), device=device)).shape
+        code = pixelcnn.sample(code_shape, args.num_samples, device=device)
+        decode(vqvae, code)
 
 
 if __name__ == '__main__':
