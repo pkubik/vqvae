@@ -125,7 +125,7 @@ def main():
     for epoch in range(EPOCHS):
         train(cfg, model, device, train_loader, optimizer, epoch)
         test_and_sample(cfg, model, device, test_loader, HEIGHT, WIDTH, losses, params, epoch)
-        torch.save(model, os.path.join(MODEL_PARAMS_OUTPUT_DIR, f'pixelcnn_e{epoch}.pth'))
+        torch.save({'model': model.state_dict(), 'config': cfg}, os.path.join(MODEL_PARAMS_OUTPUT_DIR, f'pixelcnn_e{epoch}.pth'))
 
     print('\nBest test loss: {}'.format(np.amin(np.array(losses))))
     print('Best epoch: {}'.format(np.argmin(np.array(losses)) + 1))
@@ -133,7 +133,7 @@ def main():
 
     MODEL_PARAMS_OUTPUT_FILENAME = '{}_cks{}hks{}cl{}hfm{}ohfm{}hl{}_params.pth'\
         .format(cfg.dataset, cfg.causal_ksize, cfg.hidden_ksize, cfg.color_levels, cfg.hidden_fmaps, cfg.out_hidden_fmaps, cfg.hidden_layers)
-    torch.save(best_params, os.path.join(MODEL_PARAMS_OUTPUT_DIR, MODEL_PARAMS_OUTPUT_FILENAME))
+    torch.save({'model': best_params, 'config': cfg}, os.path.join(MODEL_PARAMS_OUTPUT_DIR, MODEL_PARAMS_OUTPUT_FILENAME))
 
 
 if __name__ == '__main__':
