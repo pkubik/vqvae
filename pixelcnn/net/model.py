@@ -122,10 +122,13 @@ class PixelCNN(nn.Module):
 
         DATA_CHANNELS = 1
 
+        self.io_fmaps = cfg.out_hidden_fmaps
         self.hidden_fmaps = cfg.hidden_fmaps
         self.color_levels = cfg.color_levels
 
-        self.causal_conv = CausalBlock(DATA_CHANNELS,
+        self.input_embeddings = nn.Embedding(self.color_levels, self.io_fmaps)
+
+        self.causal_conv = CausalBlock(self.io_fmaps,
                                        cfg.hidden_fmaps,
                                        cfg.causal_ksize,
                                        data_channels=DATA_CHANNELS)
@@ -150,6 +153,11 @@ class PixelCNN(nn.Module):
 
     def forward(self, image, label):
         count, data_channels, height, width = image.size()
+        image = self.input_embeddings(
+            image.permute(0, 2, 3, 1)
+        ).reshape(
+            count, height, width, -1
+        ).permute(0, 3, 1, 2)
 
         v, h = self.causal_conv(image)
 
@@ -173,7 +181,7 @@ class PixelCNN(nn.Module):
     def sample(self, shape, count, label=None, device='cuda'):
         channels, height, width = shape
 
-        samples = torch.zeros(count, *shape).to(device)
+        samples = torch.zeros(count, *shape, dtype=torch.int64).to(device)
         if label is None:
             labels = torch.randint(high=10, size=(count,)).to(device)
         else:
@@ -185,7 +193,7 @@ class PixelCNN(nn.Module):
                     for c in range(channels):
                         unnormalized_probs = self.forward(samples, labels)
                         pixel_probs = torch.softmax(unnormalized_probs[:, :, c, i, j], dim=1)
-                        sampled_levels = torch.multinomial(pixel_probs, 1).squeeze().float() / (self.color_levels - 1)
+                        sampled_levels = torch.multinomial(pixel_probs, 1).squeeze()
                         samples[:, c, i, j] = sampled_levels
 
         return samples

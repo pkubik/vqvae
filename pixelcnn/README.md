@@ -12,6 +12,13 @@ and then run PixelCNN training with:
 python -m pixelcnn.train --dataset code --color-levels 256
 ```
 
+NOTE:
+Even though `color_levels` suggest some relationship between
+the I/O channels they are actually completely removed and
+exist only on the visualizations. I.e. $z_i$ and $z_{i+1}$
+have similar shade of grey on the visualizations but they
+are immediately mapped to completely unrelated embeddings.
+
 -------------------------------------------------
 
 This repository is a PyTorch implementation of [PixelCNN](https://arxiv.org/abs/1601.06759) in its [gated](https://arxiv.org/abs/1606.05328) form.
