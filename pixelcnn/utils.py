@@ -47,12 +47,16 @@ def save_samples(samples, dirname, filename):
 
 
 def get_loaders(dataset_name, batch_size, color_levels, train_root, test_root):
-    if dataset_name == 'code':
-        train_data = np.load(Path(train_root) / 'encoded_cifar10.npz')
+    if 'code' in dataset_name:
+        segments = dataset_name.split('-')
+        name = 'CIFAR10'
+        if len(segments) == 2:
+            name = segments[1]
+        train_data = np.load(Path(train_root) / f'encoded_{name}.npz')
         train_dataset = TensorDataset(
             torch.tensor(train_data['x']).unsqueeze(1),
             torch.tensor(train_data['y']))
-        test_data = np.load(Path(test_root) / 'encoded_cifar10.npz')
+        test_data = np.load(Path(test_root) / f'encoded_{name}.npz')
         test_dataset = TensorDataset(
             torch.tensor(test_data['x']).unsqueeze(1),
             torch.tensor(test_data['y']))

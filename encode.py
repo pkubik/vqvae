@@ -27,19 +27,21 @@ def encode(model_path: Union[str, Path], output_path: Union[str, Path]):
     output_path = Path(output_path)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    vqvae, _ = load_vqvae(model_path, device)
+    vqvae, config = load_vqvae(model_path, device)
+    params = config["hyperparameters"]
+    dataset = params['dataset']
 
-    _, _, training_loader, validation_loader, _ = load_data_and_data_loaders('CIFAR10', 128)
+    _, _, training_loader, validation_loader, _ = load_data_and_data_loaders(dataset, 128)
 
-    print("Encoding CIFAR-10 test...")
-    encode_from_loader(vqvae, validation_loader, output_path / 'test' / 'encoded_cifar10.npz', device)
+    print(f"Encoding {dataset} test...")
+    encode_from_loader(vqvae, validation_loader, output_path / 'test' / f'encoded_{dataset}.npz', device)
 
-    print("Encoding CIFAR-10 train...")
-    encode_from_loader(vqvae, training_loader, output_path / 'train' / 'encoded_cifar10.npz', device)
+    print(f"Encoding {dataset} train...")
+    encode_from_loader(vqvae, training_loader, output_path / 'train' / f'encoded_{dataset}.npz', device)
 
 
 def main():
-    parser = argparse.ArgumentParser("Encode whole CIFAR-10 dataset using selected model.")
+    parser = argparse.ArgumentParser("Encode whole dataset using selected model.")
     parser.add_argument("model", help="Model path")
     args = parser.parse_args()
 

@@ -4,6 +4,7 @@ from torchvision.utils import make_grid
 
 from pixelcnn.net import PixelCNN
 from utils import load_cifar
+from utils import load_mnist
 from utils import load_vqvae
 from models.vqvae import VQVAE
 import matplotlib.pyplot as plt
@@ -65,15 +66,18 @@ def main():
         use_gpu = torch.cuda.is_available()
     device = torch.device('cuda' if use_gpu else 'cpu')
 
-    vqvae, data = load_vqvae(args.model, device)
-    params = data["hyperparameters"]
+    vqvae, config = load_vqvae(args.model, device)
+    params = config["hyperparameters"]
 
     print(f"Loaded model {args.model}")
     data = None
 
     if args.reconstruction:
         if data is None:
-            _, data = load_cifar()
+            if params['dataset'] == "MNIST":
+                _, data = load_mnist()
+            else:
+                _, data = load_cifar()
         reconstruct(vqvae, [data[i][0] for i in range(args.num_samples)], device)
 
     if args.uniform_sample:
