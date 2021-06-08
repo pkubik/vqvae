@@ -13,6 +13,27 @@ import numpy as np
 from models.vqvae import VQVAE
 
 
+def load_mnist():
+    train = datasets.MNIST(root="data", train=True, download=True,
+                             transform=transforms.Compose([
+                                 transforms.ToTensor(),
+                                 transforms.Lambda(lambda x: torch.cat([x, x, x], dim=0)),
+                                 transforms.Resize(32),
+                                 transforms.Normalize(
+                                     (0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                             ]))
+
+    val = datasets.MNIST(root="data", train=False, download=True,
+                           transform=transforms.Compose([
+                               transforms.ToTensor(),
+                               transforms.Lambda(lambda x: torch.cat([x, x, x], dim=0)),
+                               transforms.Resize(32),
+                               transforms.Normalize(
+                                   (0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                           ]))
+    return train, val
+
+
 def load_cifar():
     train = datasets.CIFAR10(root="data", train=True, download=True,
                              transform=transforms.Compose([
@@ -82,6 +103,12 @@ def load_data_and_data_loaders(dataset, batch_size):
         training_loader, validation_loader = data_loaders(
             training_data, validation_data, batch_size)
         x_train_var = np.var(training_data.data / 255.0)
+
+    elif dataset == 'MNIST':
+        training_data, validation_data = load_mnist()
+        training_loader, validation_loader = data_loaders(
+            training_data, validation_data, batch_size)
+        x_train_var = np.var(np.expand_dims(training_data.data, -1) / 255.0)
 
     elif dataset == 'BLOCK':
         training_data, validation_data = load_block()
