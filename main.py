@@ -50,7 +50,7 @@ samples_plots_path.mkdir(exist_ok=True, parents=True)
 Set up VQ-VAE model with components defined in ./models/ folder
 """
 
-model = VQVAE(args.n_hiddens, args.n_residual_hiddens,
+model = VQVAE(samples[0].shape[0], args.n_hiddens, args.n_residual_hiddens,
               args.n_residual_layers, args.n_embeddings, args.embedding_dim, args.beta).to(device)
 
 """

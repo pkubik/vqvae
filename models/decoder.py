@@ -19,7 +19,7 @@ class Decoder(nn.Module):
 
     """
 
-    def __init__(self, in_dim, h_dim, n_res_layers, res_h_dim):
+    def __init__(self, channels, in_dim, h_dim, n_res_layers, res_h_dim):
         super(Decoder, self).__init__()
         kernel = 4
         stride = 2
@@ -31,7 +31,7 @@ class Decoder(nn.Module):
             nn.ConvTranspose2d(h_dim, h_dim // 2,
                                kernel_size=kernel, stride=stride, padding=1),
             nn.ReLU(),
-            nn.ConvTranspose2d(h_dim//2, 3, kernel_size=kernel,
+            nn.ConvTranspose2d(h_dim//2, channels, kernel_size=kernel,
                                stride=stride, padding=1)
         )
 

@@ -17,19 +17,17 @@ def load_mnist():
     train = datasets.MNIST(root="data", train=True, download=True,
                              transform=transforms.Compose([
                                  transforms.ToTensor(),
-                                 transforms.Lambda(lambda x: torch.cat([x, x, x], dim=0)),
-                                 transforms.Resize(32),
+                                 transforms.Lambda(lambda x: torch.cat([x], dim=0)),
                                  transforms.Normalize(
-                                     (0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                                     (0.5,), (0.5,)),
                              ]))
 
     val = datasets.MNIST(root="data", train=False, download=True,
                            transform=transforms.Compose([
                                transforms.ToTensor(),
-                               transforms.Lambda(lambda x: torch.cat([x, x, x], dim=0)),
-                               transforms.Resize(32),
+                               transforms.Lambda(lambda x: torch.cat([x], dim=0)),
                                transforms.Normalize(
-                                   (0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+                                   (0.5,), (0.5,)),
                            ]))
     return train, val
 
