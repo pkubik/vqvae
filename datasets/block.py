@@ -5,16 +5,30 @@ from torch.utils.data import Dataset
 
 class BlockDataset(Dataset):
     """
-    Creates block dataset of 32X32 images with 3 channels
+    Creates block dataset of images with 3 channels
+    if crop is True, crops to square
+    if resize is True, resizes to 32X32
     requires numpy and cv2 to work
     """
 
-    def __init__(self, file_path, train=True, transform=None):
+    def __init__(self, file_path, train=True, transform=None, resize=True, crop=False):
         print('Loading block data')
         data = np.load(file_path, allow_pickle=True)
         print('Done loading block data')
-        data = np.array([cv2.resize(x[0][0][:, :, :3], dsize=(
-            32, 32), interpolation=cv2.INTER_CUBIC) for x in data])
+
+        if crop:
+            width = data.shape[1]
+            height = data.shape[2]
+            new_size = min(width, height)
+
+            offset_w = (width - new_size) // 2
+            offset_h = (height - new_size) // 2
+
+            data = data[:,offset_w:(offset_w + new_size),offset_h:(offset_h + new_size),:]
+
+        if resize:
+            data = np.array([cv2.resize(x[0][0][:, :, :3], dsize=(
+                32, 32), interpolation=cv2.INTER_CUBIC) for x in data])
 
         n = data.shape[0]
         cutoff = n//10

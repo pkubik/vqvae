@@ -3,7 +3,7 @@ import torch
 from torchvision.utils import make_grid
 
 from pixelcnn.net import PixelCNN
-from utils import load_cifar
+from utils import load_cifar, load_data_and_data_loaders
 from utils import load_mnist
 from utils import load_vqvae
 from models.vqvae import VQVAE
@@ -24,6 +24,7 @@ def reconstruct(model: VQVAE, images: list, device, plot_path: str = None):
     _, hx, _ = model(x)
 
     concated_x = torch.cat((x, hx))
+    plt.title('Reconstruct')
     display_image_grid(concated_x)
     if plot_path:
         plt.savefig(plot_path)
@@ -34,6 +35,7 @@ def reconstruct(model: VQVAE, images: list, device, plot_path: str = None):
 def uniform_sample(model: VQVAE, num_samples: int, device, plot_path: str = None):
     code_shape = model.encode(torch.zeros((num_samples, 3, 32, 32), device=device)).shape
     print('Latent code shape:', code_shape)
+    plt.title('Uniform sample')
     code = torch.randint(0, model.vector_quantization.embedding.num_embeddings, code_shape, device=device)
     decode(model, code, plot_path)
 
@@ -74,10 +76,7 @@ def main():
 
     if args.reconstruction:
         if data is None:
-            if params['dataset'] == "MNIST":
-                _, data = load_mnist()
-            else:
-                _, data = load_cifar()
+            _, data, _, _, _ = load_data_and_data_loaders(params['dataset'], params['batch_size'])
         reconstruct(vqvae, [data[i][0] for i in range(args.num_samples)], device)
 
     if args.uniform_sample:
@@ -91,6 +90,7 @@ def main():
         pixelcnn.load_state_dict(pixelcnn_state)
         code_shape = vqvae.encode(torch.zeros((1, 3, 32, 32), device=device)).shape
         code = pixelcnn.sample(code_shape, args.num_samples, device=device)
+        plt.title('PixelCNN decode')
         decode(vqvae, code)
 
 

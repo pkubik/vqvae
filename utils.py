@@ -7,6 +7,8 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 import time
 import os
+
+from torchvision.transforms.transforms import ConvertImageDtype
 from datasets.block import BlockDataset, LatentBlockDataset
 import numpy as np
 
@@ -69,6 +71,29 @@ def load_block():
                        ]))
     return train, val
 
+def load_duckietown():
+    data_folder_path = os.getcwd()
+    data_file_path = data_folder_path + \
+        '/data/MultiMap-v0_dataset_x_1M_objects.npy'
+
+    train = BlockDataset(data_file_path, train=True,
+                         transform=transforms.Compose([
+                             transforms.ToTensor(),
+                             transforms.ConvertImageDtype(torch.float32),
+                             transforms.Normalize(
+                                (0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                         ]), resize=False, crop=True)
+
+    val = BlockDataset(data_file_path, train=False,
+                       transform=transforms.Compose([
+                           transforms.ToTensor(),
+                           transforms.ConvertImageDtype(torch.float32),
+                           transforms.Normalize(
+                                (0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                       ]), resize=False, crop=True)
+
+    return train, val
+
 def load_latent_block():
     data_folder_path = os.getcwd()
     data_file_path = data_folder_path + \
@@ -121,6 +146,13 @@ def load_data_and_data_loaders(dataset, batch_size):
 
         x_train_var = np.var(training_data.data)
 
+    elif dataset == 'DUCKIETOWN':
+        training_data, validation_data = load_duckietown()
+        training_loader, validation_loader = data_loaders(
+            training_data, validation_data, batch_size)
+
+        x_train_var = np.var(training_data.data)
+
     else:
         raise ValueError(
             'Invalid dataset: only CIFAR10 and BLOCK datasets are supported.')
@@ -157,7 +189,12 @@ def load_vqvae(model_path: Union[str, Path], device: torch.device = None):
 
     params = data["hyperparameters"]
 
-    model = VQVAE(params['n_hiddens'], params['n_residual_hiddens'],
+    if 'channels' in params:
+        channels = params['channels']
+    else:
+        channels = 1 if params['dataset'] == 'MNIST' else 3
+
+    model = VQVAE(channels, params['n_hiddens'], params['n_residual_hiddens'],
                   params['n_residual_layers'], params['n_embeddings'],
                   params['embedding_dim'], params['beta']).to(device)
 
