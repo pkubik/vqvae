@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import torch
 from torchvision.utils import make_grid
 
@@ -61,7 +62,18 @@ def main():
     parser.add_argument('-g', '--gpu', action='store_true', default=None)
     parser.add_argument('--no-gpu', action='store_false', default=None)
     parser.add_argument('-n', '--num-samples', type=int, default=16)
+    parser.add_argument('--plot_path', type=str, default=None)
     args = parser.parse_args()
+
+    recon_path = None
+    sample_path = None
+    pixelcnn_sample_path = None
+    if args.plot_path:
+        os.makedirs(args.plot_path, exist_ok=True)
+        
+        recon_path = os.path.join(args.plot_path, 'recon.png')
+        sample_path = os.path.join(args.plot_path, 'sample.png')
+        pixelcnn_sample_path = os.path.join(args.plot_path, 'pixelcnn_sample.png')
 
     use_gpu = args.gpu
     if use_gpu is None:
@@ -77,10 +89,10 @@ def main():
     if args.reconstruction:
         if data is None:
             _, data, _, _, _ = load_data_and_data_loaders(params['dataset'], params['batch_size'])
-        reconstruct(vqvae, [data[i][0] for i in range(args.num_samples)], device)
+        reconstruct(vqvae, [data[i][0] for i in range(args.num_samples)], device, plot_path=recon_path)
 
     if args.uniform_sample:
-        uniform_sample(vqvae, args.num_samples, device)
+        uniform_sample(vqvae, args.num_samples, device, plot_path=sample_path)
 
     if args.pixelcnn:
         ckpt = torch.load(args.pixelcnn)
@@ -91,7 +103,7 @@ def main():
         code_shape = vqvae.encode(torch.zeros((1, 3, 32, 32), device=device)).shape
         code = pixelcnn.sample(code_shape, args.num_samples, device=device)
         plt.title('PixelCNN decode')
-        decode(vqvae, code)
+        decode(vqvae, code, plot_path=pixelcnn_sample_path)
 
 
 if __name__ == '__main__':
