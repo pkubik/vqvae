@@ -25,18 +25,19 @@ def reconstruct(model: VQVAE, images: list, device, plot_path: str = None):
     _, hx, _ = model(x)
 
     concated_x = torch.cat((x, hx))
-    plt.title('Reconstruct')
     display_image_grid(concated_x)
     if plot_path:
         plt.savefig(plot_path)
     else:
+        plt.title('Reconstruct')
         plt.show()
 
 
 def uniform_sample(model: VQVAE, num_samples: int, device, plot_path: str = None):
     code_shape = model.encode(torch.zeros((num_samples, 3, 32, 32), device=device)).shape
     print('Latent code shape:', code_shape)
-    plt.title('Uniform sample')
+    if not plot_path:
+        plt.title('Uniform sample')
     code = torch.randint(0, model.vector_quantization.embedding.num_embeddings, code_shape, device=device)
     decode(model, code, plot_path)
 
@@ -102,7 +103,8 @@ def main():
         pixelcnn.load_state_dict(pixelcnn_state)
         code_shape = vqvae.encode(torch.zeros((1, 3, 32, 32), device=device)).shape
         code = pixelcnn.sample(code_shape, args.num_samples, device=device)
-        plt.title('PixelCNN decode')
+        if not pixelcnn_sample_path:
+            plt.title('PixelCNN decode')
         decode(vqvae, code, plot_path=pixelcnn_sample_path)
 
 
