@@ -71,6 +71,29 @@ def load_block():
                        ]))
     return train, val
 
+
+def load_boots():
+    data_folder_path = os.getcwd()
+    data_file_path = data_folder_path + '/data/boots.npy'
+    train = BlockDataset(data_file_path, train=True,
+                         transform=transforms.Compose([
+                             transforms.ToTensor(),
+                             transforms.ConvertImageDtype(torch.float32),
+                             transforms.Normalize(
+                                 (0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                         ]), resize=False, crop=True)
+
+    val = BlockDataset(data_file_path, train=False,
+                       transform=transforms.Compose([
+                           transforms.ToTensor(),
+                           transforms.ConvertImageDtype(torch.float32),
+                           transforms.Normalize(
+                               (0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+                       ]), resize=False, crop=True)
+
+    return train, val
+
+
 def load_duckietown():
     data_folder_path = os.getcwd()
     data_file_path = data_folder_path + \
@@ -93,6 +116,7 @@ def load_duckietown():
                        ]), resize=False, crop=True)
 
     return train, val
+
 
 def load_latent_block():
     data_folder_path = os.getcwd()
@@ -148,6 +172,13 @@ def load_data_and_data_loaders(dataset, batch_size):
 
     elif dataset == 'DUCKIETOWN':
         training_data, validation_data = load_duckietown()
+        training_loader, validation_loader = data_loaders(
+            training_data, validation_data, batch_size)
+
+        x_train_var = np.var(training_data.data)
+
+    elif dataset == 'BOOTS':
+        training_data, validation_data = load_boots()
         training_loader, validation_loader = data_loaders(
             training_data, validation_data, batch_size)
 
